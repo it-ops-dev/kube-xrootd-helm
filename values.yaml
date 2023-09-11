@@ -1,0 +1,60 @@
+services:
+  sense-origin-02:
+    hostname: <REPLACE_ME>
+    network:
+      name: "<REPLACEME>"
+      ips: '["<REPLACEME>"]'
+      mac: "<REPLACEME>"
+      gateway: '["REPLACEME"]'
+    nodeSelector: <REPLACEME>
+    macaroon_secret: <REPLACEME_BASE64>
+    env:
+    # XRootD oss.localroot parameter (REQUIRED)
+    - name: LOCAL_ROOT
+      value: /storage/cms
+    # XRootD all.sitename parameter (REQUIRED)
+    - name: SITENAME
+      value: T2_US_Caltech_SDN
+    # XRootD certificate (for xrootd, http only if HTTPREADWRITE enabled) (REQUIRED)
+    - name: XRD_CERT
+      value: /etc/grid-security/xrootd/xrootdcert.pem
+    # XRootD key (for xrootd, http) (REQUIRED)
+    - name: XRD_KEY
+      value: /etc/grid-security/xrootd/xrootdkey.pem
+    # XRootd HTTP Secret Key (REQUIRED)
+    - name: XRD_HTTP_SECRET_KEY
+      value: <REPLACEME>
+    # Enable HTTP READ/WRITE (Optional, if defined - will enable it)
+    - name: HTTPREADWRITE
+      value: "1"
+    # Shoveler endpoint (Optional, if defined - use it as a host)
+    #- name: SHOVELER
+    #  value: sense-redir-01.ultralight.org
+    # Shoveler port (Optional, if defined - use it as shoveler port. Requires SHOVELER KEY)
+    #- name: SHOVELER_PORT
+    #  value: "9993"
+    # XRootD Server Port for cmsd process (REQUIRED)
+    - name: XRD_MNG_PORT
+      value: "1213"
+    # XRootD Server Port for xrootd process (REQUIRED)
+    - name: XRD_PORT
+      value: "1094"
+    # XRootD Redirector for this host (REQUIRED)
+    - name: XRD_REDIR
+      value: <REPLACEME>
+    # XRootD Redirector Port to connect to Redirector CMSD (REQUIRED)
+    - name: XRD_REDIR_PORT
+      value: "1213"
+    # Pod type redirector (Optional - if defined, pod will act as redirector)
+    #- name: TYPE_REDIRECTOR
+    #  value: ""
+    # Run XRootD in full debug mode (Optional - if defined, pod will run in full debug mode)
+    #- name: FULL_DEBUG
+    #  value: "1"
+    # Global redirector. (Optional - if defined, ti will register to master redirector - e.g. CMS Fermilab)
+    #- name: GLOBALREDIR
+    #  value: ""
+    # CUSTOMCHECKSUM - Allow custom check to filesystem. Needed for Rucio CMS, where XATTRS are not supported on tmpfs
+    - name: CUSTOMCHECKSUM
+      value: "1"
+
