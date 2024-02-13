@@ -1,0 +1,47 @@
+{{- range $i, $value := .Values.sense_cleaner }}
+    {{- $appname := $value | splitList "." | first | trunc 40 | trimSuffix "-" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: sense-clean-{{ $appname }}
+  name: sense-clean-{{ $appname }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: sense-clean-{{ $appname }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: sense-clean-{{ $appname }}
+    spec:
+      containers:
+      - env:
+        - name: SENSE_CLEANUP
+          value: '1'
+        image: "cmscaltech/sense-cleaner:dev"
+        imagePullPolicy: "Always"
+        name: sense-clean-{{ $appname }}
+        resources:
+          limits:
+            cpu: 1
+            memory: "1Gi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+        volumeMounts:
+        - mountPath: /storage/cms
+          name: sense-clean-{{ $appname }}-fs
+      nodeSelector:
+        kubernetes.io/hostname: {{ $value }}
+      restartPolicy: Always
+      volumes:
+      - hostPath:
+          path: /mnt/raid0
+        name: sense-clean-{{ $appname }}-fs
+{{- end }}

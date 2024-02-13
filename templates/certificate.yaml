@@ -1,0 +1,22 @@
+{{- range $k, $v := .Values.origins }}
+  {{- $appname := $k | splitList "." | first | trunc 40 | trimSuffix "-" }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $appname }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  commonName: {{ $k }}
+  dnsNames:
+  - {{ $k }}
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: incommon-v2-prod
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 4096
+  secretName: incommon-v2-{{ $k }}
+  {{- end }}

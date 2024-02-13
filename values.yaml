@@ -1,60 +1,136 @@
-services:
-  sense-origin-02:
-    hostname: <REPLACE_ME>
-    network:
-      name: "<REPLACEME>"
-      ips: '["<REPLACEME>"]'
-      mac: "<REPLACEME>"
-      gateway: '["REPLACEME"]'
-    nodeSelector: <REPLACEME>
-    macaroon_secret: <REPLACEME_BASE64>
-    env:
-    # XRootD oss.localroot parameter (REQUIRED)
-    - name: LOCAL_ROOT
-      value: /storage/cms
-    # XRootD all.sitename parameter (REQUIRED)
-    - name: SITENAME
-      value: T2_US_Caltech_SDN
-    # XRootD certificate (for xrootd, http only if HTTPREADWRITE enabled) (REQUIRED)
-    - name: XRD_CERT
-      value: /etc/grid-security/xrootd/xrootdcert.pem
-    # XRootD key (for xrootd, http) (REQUIRED)
-    - name: XRD_KEY
-      value: /etc/grid-security/xrootd/xrootdkey.pem
-    # XRootd HTTP Secret Key (REQUIRED)
-    - name: XRD_HTTP_SECRET_KEY
-      value: <REPLACEME>
-    # Enable HTTP READ/WRITE (Optional, if defined - will enable it)
-    - name: HTTPREADWRITE
-      value: "1"
-    # Shoveler endpoint (Optional, if defined - use it as a host)
-    #- name: SHOVELER
-    #  value: sense-redir-01.ultralight.org
-    # Shoveler port (Optional, if defined - use it as shoveler port. Requires SHOVELER KEY)
-    #- name: SHOVELER_PORT
-    #  value: "9993"
-    # XRootD Server Port for cmsd process (REQUIRED)
-    - name: XRD_MNG_PORT
-      value: "1213"
-    # XRootD Server Port for xrootd process (REQUIRED)
-    - name: XRD_PORT
-      value: "1094"
-    # XRootD Redirector for this host (REQUIRED)
-    - name: XRD_REDIR
-      value: <REPLACEME>
-    # XRootD Redirector Port to connect to Redirector CMSD (REQUIRED)
-    - name: XRD_REDIR_PORT
-      value: "1213"
-    # Pod type redirector (Optional - if defined, pod will act as redirector)
-    #- name: TYPE_REDIRECTOR
-    #  value: ""
-    # Run XRootD in full debug mode (Optional - if defined, pod will run in full debug mode)
-    #- name: FULL_DEBUG
-    #  value: "1"
-    # Global redirector. (Optional - if defined, ti will register to master redirector - e.g. CMS Fermilab)
-    #- name: GLOBALREDIR
-    #  value: ""
-    # CUSTOMCHECKSUM - Allow custom check to filesystem. Needed for Rucio CMS, where XATTRS are not supported on tmpfs
-    - name: CUSTOMCHECKSUM
-      value: "1"
 
+# Namespace to deploy the xrootd server
+namespace: transfer
+
+# Environment variables.
+# Any of environment variables can also be defined under origins
+# IMPORTANT
+# Make sure not to mix variables. This will be undefined behavior
+env:
+  # Local FS point. This has to match with volume mounted
+  - name: LOCAL_ROOT
+    value: /storage/cms
+  # Sitename, mainly for reporting
+  - name: SITENAME
+    value: T2_US_Caltech_SDN
+  - name: XRD_CERT
+  # Certificate/Key
+    value: /etc/grid-security/xrootd/xrootdcert.pem
+  - name: XRD_KEY
+    value: /etc/grid-security/xrootd/xrootdkey.pem
+  # XRootD http secret key. Mandatory if HTTPREADWRITE is set
+  - name: XRD_HTTP_SECRET_KEY
+    value: <XRD_HTTP_SECRET>
+  # Enable HTTP Read/Write
+  - name: HTTPREADWRITE
+    value: '1'
+  # Local XRD Manager and XrootD ports
+  - name: XRD_MNG_PORT
+    value: '1213'
+  - name: XRD_PORT
+    value: '1094'
+  # XRootD Redirector port
+  - name: XRD_REDIR_PORT
+    value: '1213'
+  # DFS - Distributed File System (Do all servers see same Filesystem?)
+  # Redirect all lookup calls to original data servers. Redirector does not have visibility of FS
+  - name: DFS
+    value: '1'
+  # Custom checksum script, if xattr set/get not supported. It will use python script to calculate checksum
+  #- name: CUSTOMCHECKSUM
+  #  value: '1'
+  # User mapping file in yaml format. Used to create uid/gid voms/gridmap mapping
+  - name: USER_MAP_FILE
+    value: /opt/usergroups/user-group
+  # Location where to store new VOMS and Gridmap files
+  - name: VOMS_MAP_LOCATION
+    value: '/etc/grid-security/voms-mapfile'
+  - name: GRID_MAP_LOCATION
+    value: '/etc/grid-security/grid-mapfile'
+  # Proxy used mainly in cache containers. Not needed on XRootD stageout/read servers
+  # - name: X509_USER_PROXY
+  #   value: /etc/grid-security/x509
+  # Full Debug mode
+  #- name: FULL_DEBUG
+  #  value: '1'
+  # Global redirector. (Optional - if defined, ti will register to master redirector - e.g. CMS Fermilab)
+  #- name: GLOBALREDIR
+  #  value: cmsxrootd.fnal.gov
+  #- name: GLOBALREDIRPORT
+  #  value: 1213
+  # DFS - Distributed File System (Do all servers see same Filesystem?)
+  # Redirect all lookup calls to original data servers. Redirector does not have visibility of FS
+  #- DFS=1
+
+
+# Default values for each origin/redirector
+# These values can be overridden by the values in the origin/redirector section
+# under the hostname section
+default_params:
+  macaroon_secret: "<DEFAULT_MACAROON_SECRET>"
+  image: harbor.tier2-lb.ultralight.org/cmscaltech/xrootd-stageout-server:latest
+  imagePullPolicy: Always
+  resources:
+    limits:
+      cpu: 62
+      memory: 164Gi
+    requests:
+      cpu: 16
+      memory: 16Gi
+  dnsConfig:
+    nameservers:
+      - 2605:d9c0:1:1::1:3
+      - 2605:d9c0:1:1::1:4
+      - 8.8.8.8
+    options:
+      - name: ndots
+        value: '5'
+    searches:
+      - ultralight.org
+
+# Network section is Multus format (which will be json dumped) as expected by Multus
+origins:
+  k8s-transfer-11.ultralight.org:
+    network:
+    - gateway:
+      - 2605:d9c0:6:2003::1
+      - 198.32.43.97
+      ips:
+      - 2605:d9c0:6:2003::1:11/64
+      - 198.32.43.98/27
+      mac: "4a:5e:bf:48:c2:f8"
+      name: v2003
+    env:
+      - name: XRD_REDIR
+        value: k8s-redir.ultralight.org
+    mountPath: /storage/cms
+    readonly: true
+    nodeSelector: transfer-11.ultralight.org
+  k8s-redir.ultralight.org:
+    env:
+      - name: XRD_REDIR
+        value: k8s-redir.ultralight.org
+      - name: TYPE_REDIRECTOR
+        value: '1'
+      - name: GLOBALREDIR
+        value: "cmsxrootd.fnal.gov"
+      - name: GLOBALREDIRPORT
+        value: '1213'
+    network:
+    - gateway:
+      - 2605:d9c0:6:2003::1
+      - 198.32.43.97
+      ips:
+      - 2605:d9c0:6:2003::1:1f/64
+      - 198.32.43.125/27
+      mac: "fa:d7:d2:bb:b1:44"
+      name: v2003
+    mountPath: /storage/cms
+    readonly: true
+    resources:
+      limits:
+        cpu: 8
+        memory: 16Gi
+      requests:
+        cpu: 1
+        memory: 1Gi
